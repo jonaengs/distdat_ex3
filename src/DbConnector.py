@@ -1,10 +1,6 @@
 from pymongo import MongoClient, version
 
 
-
-
-
-
 class DbConnector:
     def __init__(self,
                  DATABASE='my_db',
