@@ -54,7 +54,7 @@ def parse_tp(line):
         (split[0], split[1], split[3], " ".join(split[5:]))
     ))
 
-def get_all_trackpoints(n=20):
+def get_all_trackpoints(n=10):
     return (
         parse_tp(line) | {"_id": next_tp_id(), "activity_id": None}
         for fp in itertools.islice(valid_tp_files, n or 1234567890)
@@ -65,6 +65,11 @@ def print_documents(collection_name, n=10):
     any(map(pprint, db[collection_name].find({})[:n]))
     print("\n" + "-"*50 + "\n")
 
+from jonatan_queries import query1, query5, query9
+def do_queries():
+    for q in (query1, query5, query9):
+        q(db)
+
 def insert():
     for cname, get_data in zip(collection_names, (get_users, get_labeled_activities, get_all_trackpoints)):
         if collection := db[cname]:
@@ -72,6 +77,9 @@ def insert():
         collection = db.create_collection(cname)
         collection.insert_many(get_data())
         print_documents(cname)
+
+    do_queries()
+
 
 if __name__ == '__main__':
     insert()
