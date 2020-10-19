@@ -1,33 +1,105 @@
 import os
 import glob
 from pathlib import Path
+from martin_connector import DbConnector
 
-def is_file(path):
-    splitted_path = file.name.split('/')
+def get_label_path(path):
+    splitted_path = path.split('/')
+    if len(splitted_path) < 2:
+        raise Exception('Something wrong with label path')
+
     for i in range(2):
-      splitted_path.pop()
-    joined_path = '/'.join(splitted_path)
-    return os.path.isfile('%s/labels.txt' % joined_path)
-  
+        splitted_path.pop()
+    user_path = '/'.join(splitted_path)
+    return user_path + '/labels.txt'
 
-path = Path(__file__).parent.absolute() # path = Path(__file__).parent.parent.absolute()
-for filepath in glob.iglob(r'%s/**/*.plt' % path, recursive=True):
-    with open(filepath, 'r') as file:
+def get_label(path, start_date_time, end_date_time):
+    with open(path, 'r') as file:
         lines = file.readlines()
 
-        if len(lines) > 3: # 2500
-          continue
+        for i in range(1, len(lines)):
+            splitted_line = lines[i].split()
+            if len(splitted_line) != 5:
+                raise Exception('Label line should have 5 entries')
 
-        #Activity = {}
-        folder_contains_label_file = is_file(path.name)
-        if folder_contains_label_file:
-          startTime = lines[0]
-          endTime = lines[-1]
+            start = splitted_line[0] + '+' + splitted_line[1]
+            end = splitted_line[2] + '+' + splitted_line[3]
+            label = splitted_line[4]
+            if start == start_date_time and end == end_date_time:
+                return label
+        
+        return False
 
-        c = 1
-        for line in lines:
-          if c <= 0: # 6
-              c += 1
-              continue
-          data = line.strip()
-          #print(data)
+def get_date_and_time(track_point_line):
+    dateAndTime = track_point_line.split(',')[-2:]
+    return '+'.join(dateAndTime)
+
+def get_track_point(track_point_line, id, activity_id):
+    #print('ok')
+    # _id (int), lat (double), lon (double), altitude (int), date_days (double), date_time (datetime)
+    track_point = {}
+    splitted_track_point = track_point_line.split(',')
+    if len(splitted_track_point) != 7:
+        raise Exception('Track point line should have 7 entries')
+    
+    track_point = {
+        '_id': id,
+        'lat': float(splitted_track_point[0]),
+        'lon': float(splitted_track_point[1]),
+        'altitude': int(float(splitted_track_point[3])),
+        'date_days': float(splitted_track_point[4]),
+        'date_time': splitted_track_point[5] + '+' + splitted_track_point[6],
+        'activity_id': activity_id 
+    }
+    return track_point
+
+
+
+def main():
+    activity_id_counter = 1
+    track_point_id_counter = 1
+    db = DbConnector().db
+    path = Path(__file__).parent.absolute() # path = Path(__file__).parent.parent.absolute()
+
+    for filepath in glob.iglob(r'%s/**/*.plt' % path, recursive=True):
+        with open(filepath, 'r') as file:
+            user_id = file.name.split('/')[-3]
+            activity = {'_id': activity_id_counter, 'user_id': user_id}
+            track_points = []
+
+            lines = file.readlines()
+
+            if len(lines) > 2500:
+                continue
+
+            first_track_point = lines[6].strip()
+            start_date_time = get_date_and_time(first_track_point)
+            activity['start_date_time'] = start_date_time
+
+            last_track_point = lines[-1].strip()
+            end_date_time = get_date_and_time(last_track_point)
+            activity['end_date_time'] = end_date_time
+
+            label_path = get_label_path(file.name)
+            is_labeled = os.path.isfile(label_path)
+            if is_labeled:
+                label = get_label(label_path, start_date_time, end_date_time)
+                if label:
+                    activity['transportation_mode'] = label
+
+            for i in range(6, len(lines)):
+                track_point_line = lines[i].strip()
+                track_point = get_track_point(track_point_line, track_point_id_counter, activity_id_counter)
+                track_points.append(track_point)
+                track_point_id_counter += 1
+            
+            activity_id_counter += 1
+
+            db['Activity'].insert_one(activity)
+            db['TrackPoint'].insert_many(track_points)
+            print('FERDIG MED FIL!\n')
+
+if __name__ == '__main__':
+    main()
+
+# TODO: add ids and refs
