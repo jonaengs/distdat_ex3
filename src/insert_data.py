@@ -46,6 +46,17 @@ def parse_label(line):
     return {"start_date_time": start_dt, "end_date_time": end_dt, "transportation_mode": transport}
 
 def get_labeled_activities():
+    for uid in labeled_users:
+        for line in open(f"dataset/Data/{uid:03}/labels.txt").readlines()[1:]:
+            activity = parse_label(line) | {"user_id": f"{uid:03}", "_id": next_activity_id()}
+            a_start_dt = activity["start_date_time"]
+            # finn fil som tilsvarer a_start_dt
+            # lag trackpoints av alle tp i fila
+            # map(
+            #       lambda tp: tp | {"_id": next_tp_id(), "activity_id": activity["_id"]}, 
+            #       map(parse_tp, lines)
+            #    )
+
     return (
         parse_label(line) | {"user_id": f"{uid:03}", "_id": next_activity_id()}
         for uid in labeled_users
@@ -115,4 +126,4 @@ def insert():
 
 
 if __name__ == '__main__':
-    insert()
+    print(list(get_users()))
