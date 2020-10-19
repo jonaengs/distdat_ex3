@@ -108,7 +108,3 @@ def insert():
     any(map(print_documents, collection_names))
 
     do_queries()
-
-
-if __name__ == '__main__':
-    print(list(get_users()))
