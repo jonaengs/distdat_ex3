@@ -29,7 +29,7 @@ def next_tp_id():
     return __trackpoint_id
 
 """
-    LAGER DICTIONARY FOR ALLE BRUKERE
+    LAGER DICTIONARY AV ALLE BRUKERE
 """
 def get_users():
     return (
@@ -68,18 +68,20 @@ def get_all_trackpoints(n=10):
         for line in open(fp).readlines()[6:]
     )
 
+"""
+    UTILITY
+"""
 def print_documents(collection_name, n=10):
     any(map(pprint, db[collection_name].find({})[:n]))
     print("\n" + "-"*50 + "\n")
 
-
-
+"""
+    INTERAGER MED DATABASE
+"""
 from jonatan_queries import query1, query5, query9
 def do_queries():
     for q in (query1, query5, query9):
         q(db)
-
-
 
 def reset_collections():
     for cname in collection_names:
