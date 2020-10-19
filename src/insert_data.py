@@ -35,12 +35,12 @@ def get_labeled_activities():
     for uid in labeled_users:
         for line in open(f"dataset/Data/{uid:03}/labels.txt").readlines()[1:]:
             activity = parse_label(line) | {"user_id": f"{uid:03}", "_id": next(__activity_id)}
-            a_start_dt = activity["start_date_time"]
-            # finn fil som tilsvarer a_start_dt
-            # lag trackpoints av alle tp i fila
+            activity_start_dt = activity["start_date_time"]
+            # finn fil som tilsvarer activity_start_dt
+            # lag trackpoints av alle trackpoint i fila
             # map(
             #       lambda tp: tp | {"_id": next(__trackpoint_id), "activity_id": activity["_id"]}, 
-            #       map(parse_tp, lines)
+            #       map(parse_trackpoint, lines)
             #    )
 
     return (
@@ -52,27 +52,27 @@ def get_labeled_activities():
 """
     LAGER DICTIONARY AV ALLE TRACKPOINTS
 """
-def activity_from_tps(tp1, tp2):
-    start_dt, end_dt = parse_tp(tp1)["date_time"], parse_tp(tp2)["date_time"]
+def activity_from_trackpoints(tp1, tp2):
+    start_dt, end_dt = parse_trackpoint(tp1)["date_time"], parse_trackpoint(tp2)["date_time"]
     return {"_id": next(__activity_id), "start_date_time": start_dt, "end_date_time": end_dt}
 
-def parse_tp(line):
+def parse_trackpoint(line):
     split = line.strip().split(",")
     return dict(zip(
         ("lat", "lon", "altitude", "date_time"),
         (split[0], split[1], split[3], " ".join(split[5:]))
     ))
 
-def get_tps_and_acts():
+def get_trackpoints_and_activities():
     for uid in user_ids:
-        user_tp_path = f"dataset/Data/{uid:03}/Trajectory"
-        for tp_fp in map(partial(os.path.join, user_tp_path), os.listdir(user_tp_path)):
-           lines = open(tp_fp).readlines()[6:] # skip header
+        user_trackpoint_path = f"dataset/Data/{uid:03}/Trajectory"
+        for trackpoint_fp in map(partial(os.path.join, user_trackpoint_path), os.listdir(user_trackpoint_path)):
+           lines = open(trackpoint_fp).readlines()[6:] # skip header
            if len(lines) <= 2500:
-               activity = activity_from_tps(lines[0], lines[-1]) | {"user_id": f"{uid:03}", "_id": next(__activity_id)}
+               activity = activity_from_trackpoints(lines[0], lines[-1]) | {"user_id": f"{uid:03}", "_id": next(__activity_id)}
                file_trackpoints = map(
                    lambda tp: tp | {"_id": next(__trackpoint_id), "activity_id": activity["_id"]}, 
-                   map(parse_tp, lines)
+                   map(parse_trackpoint, lines)
                 )
                yield activity, file_trackpoints
 
@@ -102,7 +102,7 @@ def insert():
     
     db[USER].insert_many(get_users())
     db[ACTIVITY].insert_many(get_labeled_activities())
-    for activity, trackpoints in itertools.islice(get_tps_and_acts(), 10): # henter kun 10 første
+    for activity, trackpoints in itertools.islice(get_trackpoints_and_activities(), 10): # henter kun 10 første
         db[ACTIVITY].insert_one(activity)
         db[TRACKPOINT].insert_many(trackpoints)
 
