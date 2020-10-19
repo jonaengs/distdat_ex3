@@ -35,8 +35,6 @@ def get_date_and_time(track_point_line):
     return '+'.join(dateAndTime)
 
 def get_track_point(track_point_line, id, activity_id):
-    #print('ok')
-    # _id (int), lat (double), lon (double), altitude (int), date_days (double), date_time (datetime)
     track_point = {}
     splitted_track_point = track_point_line.split(',')
     if len(splitted_track_point) != 7:
@@ -52,8 +50,6 @@ def get_track_point(track_point_line, id, activity_id):
         'activity_id': activity_id 
     }
     return track_point
-
-
 
 def main():
     activity_id_counter = 1
@@ -101,5 +97,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# TODO: add ids and refs
