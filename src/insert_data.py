@@ -16,7 +16,7 @@ all_tp_files = (
     os.path.join(f"dataset/Data/{uid:03}/Trajectory", fn)
     for uid in range(182)
     for fn in os.listdir(f"dataset/Data/{uid:03}/Trajectory"))
-valid_tp_files = list(filter(lambda fp: len(open(fp).readlines()) <= 2506, all_tp_files))
+valid_tp_files = filter(lambda fp: len(open(fp).readlines()) <= 2506, all_tp_files)
 
 def next_activity_id():
     global __activity_id
@@ -72,20 +72,27 @@ def print_documents(collection_name, n=10):
     any(map(pprint, db[collection_name].find({})[:n]))
     print("\n" + "-"*50 + "\n")
 
+
+
 from jonatan_queries import query1, query5, query9
 def do_queries():
     for q in (query1, query5, query9):
         q(db)
 
-def insert():
+
+
+def reset_collections():
     for cname in collection_names:
         if collection := db[cname]:
             collection.drop()
-        collection = db.create_collection(cname)
+        db.create_collection(cname)
+
+def insert():
+    reset_collections()
     
     db[USER].insert_many(get_users())
     db[ACTIVITY].insert_many(get_labeled_activities())
-    db[TRACPOINT].insert_many(get_all_trackpoints())
+    db[TRACKPOINT].insert_many(get_all_trackpoints())
 
     do_queries()
 
