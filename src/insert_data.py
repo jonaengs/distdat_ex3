@@ -12,19 +12,11 @@ USER, ACTIVITY, TRACKPOINT = collection_names = "User", "Activity", "TrackPoint"
 __activity_id = 0
 __trackpoint_id = 0
 labeled_users = tuple(map(int, Path("dataset/labeled_ids.txt").read_text().split("\n")[:-1])) # closes file automatically
-tp_path = "dataset/Data/{uid:03}/Trajectory"
 all_tp_files = (
-    os.path.join(tp_path.format(uid=uid), fn)
+    os.path.join(f"dataset/Data/{uid:03}/Trajectory", fn)
     for uid in range(182)
-    for fn in os.listdir(tp_path.format(uid=uid))
-)
-valid_tp_files = filter(lambda fp: len(open(fp).readlines()) <= 2506, all_tp_files)
-
-def get_users():
-    return (
-        {"_id": f"{i:03}", "has_labels": i in labeled_users}
-        for i in range(182)
-    )
+    for fn in os.listdir(f"dataset/Data/{uid:03}/Trajectory"))
+valid_tp_files = list(filter(lambda fp: len(open(fp).readlines()) <= 2506, all_tp_files))
 
 def next_activity_id():
     global __activity_id
@@ -36,6 +28,18 @@ def next_tp_id():
     __trackpoint_id += 1
     return __trackpoint_id
 
+"""
+    LAGER DICTIONARY FOR ALLE BRUKERE
+"""
+def get_users():
+    return (
+        {"_id": f"{i:03}", "has_labels": i in labeled_users}
+        for i in range(182)
+    )
+
+"""
+    LAGER DICTIONARY AV ALLE AKTIVITETER SOM HAR LABELS
+"""
 def parse_label(line):
     start_dt, end_dt, transport = line.strip().split("\t")
     return {"start_date_time": start_dt, "end_date_time": end_dt, "transportation_mode": transport}
@@ -47,6 +51,9 @@ def get_labeled_activities():
         for line in open(f"dataset/Data/{uid:03}/labels.txt").readlines()[1:]
     )
 
+"""
+    LAGER DICTIONARY AV ALLE TRACKPOINTS
+"""
 def parse_tp(line):
     split = line.strip().split(",")
     return dict(zip(
@@ -71,12 +78,14 @@ def do_queries():
         q(db)
 
 def insert():
-    for cname, get_data in zip(collection_names, (get_users, get_labeled_activities, get_all_trackpoints)):
+    for cname in collection_names:
         if collection := db[cname]:
             collection.drop()
         collection = db.create_collection(cname)
-        collection.insert_many(get_data())
-        print_documents(cname)
+    
+    db[USER].insert_many(get_users())
+    db[ACTIVITY].insert_many(get_labeled_activities())
+    db[TRACPOINT].insert_many(get_all_trackpoints())
 
     do_queries()
 
