@@ -1,7 +1,6 @@
 import os
 from itertools import count
 from functools import partial
-from pathlib import Path
 from pprint import pprint
 
 from DbConnector import DbConnector
@@ -13,7 +12,7 @@ USER, ACTIVITY, TRACKPOINT = collection_names = "User", "Activity", "TrackPoint"
 __activity_id = count()
 __trackpoint_id = count()
 user_ids = range(182)
-labeled_users = tuple(map(int, open("dataset/labeled_ids.txt").read_lines()[:-1])) # closes file automatically
+labeled_users = tuple(map(int, open("dataset/labeled_ids.txt").read_lines()[:-1]))
 
 """
     LAGER DICTIONARY AV ALLE BRUKERE
