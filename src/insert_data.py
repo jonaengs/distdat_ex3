@@ -1,5 +1,5 @@
 import os
-import itertools
+from itertools import count
 from functools import partial
 from pathlib import Path
 from pprint import pprint
@@ -10,25 +10,10 @@ from DbConnector import DbConnector
 db = DbConnector().db
 USER, ACTIVITY, TRACKPOINT = collection_names = "User", "Activity", "TrackPoint"
 
-__activity_id = 0
-__trackpoint_id = 0
+__activity_id = count()
+__trackpoint_id = count()
 user_ids = range(182)
-labeled_users = tuple(map(int, Path("dataset/labeled_ids.txt").read_text().split("\n")[:-1])) # closes file automatically
-all_tp_files = (
-    os.path.join(f"dataset/Data/{uid:03}/Trajectory", fn)
-    for uid in user_ids
-    for fn in os.listdir(f"dataset/Data/{uid:03}/Trajectory"))
-valid_tp_files = filter(lambda fp: len(open(fp).readlines()) <= 2506, all_tp_files)
-
-def next_activity_id():
-    global __activity_id
-    __activity_id += 1
-    return __activity_id
-
-def next_tp_id():
-    global __trackpoint_id
-    __trackpoint_id += 1
-    return __trackpoint_id
+labeled_users = tuple(map(int, open("dataset/labeled_ids.txt").read_lines()[:-1])) # closes file automatically
 
 """
     LAGER DICTIONARY AV ALLE BRUKERE
@@ -49,17 +34,17 @@ def parse_label(line):
 def get_labeled_activities():
     for uid in labeled_users:
         for line in open(f"dataset/Data/{uid:03}/labels.txt").readlines()[1:]:
-            activity = parse_label(line) | {"user_id": f"{uid:03}", "_id": next_activity_id()}
+            activity = parse_label(line) | {"user_id": f"{uid:03}", "_id": next(__activity_id)}
             a_start_dt = activity["start_date_time"]
             # finn fil som tilsvarer a_start_dt
             # lag trackpoints av alle tp i fila
             # map(
-            #       lambda tp: tp | {"_id": next_tp_id(), "activity_id": activity["_id"]}, 
+            #       lambda tp: tp | {"_id": next(__trackpoint_id), "activity_id": activity["_id"]}, 
             #       map(parse_tp, lines)
             #    )
 
     return (
-        parse_label(line) | {"user_id": f"{uid:03}", "_id": next_activity_id()}
+        parse_label(line) | {"user_id": f"{uid:03}", "_id": next(__activity_id)}
         for uid in labeled_users
         for line in open(f"dataset/Data/{uid:03}/labels.txt").readlines()[1:]
     )
@@ -69,7 +54,7 @@ def get_labeled_activities():
 """
 def activity_from_tps(tp1, tp2):
     start_dt, end_dt = parse_tp(tp1)["date_time"], parse_tp(tp2)["date_time"]
-    return {"_id": next_activity_id(), "start_date_time": start_dt, "end_date_time": end_dt}
+    return {"_id": next(__activity_id), "start_date_time": start_dt, "end_date_time": end_dt}
 
 def parse_tp(line):
     split = line.strip().split(",")
@@ -84,9 +69,9 @@ def get_tps_and_acts():
         for tp_fp in map(partial(os.path.join, user_tp_path), os.listdir(user_tp_path)):
            lines = open(tp_fp).readlines()[6:] # skip header
            if len(lines) <= 2500:
-               activity = activity_from_tps(lines[0], lines[-1]) | {"user_id": f"{uid:03}", "_id": next_activity_id()}
+               activity = activity_from_tps(lines[0], lines[-1]) | {"user_id": f"{uid:03}", "_id": next(__activity_id)}
                file_trackpoints = map(
-                   lambda tp: tp | {"_id": next_tp_id(), "activity_id": activity["_id"]}, 
+                   lambda tp: tp | {"_id": next(__trackpoint_id), "activity_id": activity["_id"]}, 
                    map(parse_tp, lines)
                 )
                yield activity, file_trackpoints
