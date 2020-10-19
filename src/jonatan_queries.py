@@ -1,6 +1,6 @@
 from collections import Counter
 from itertools import groupby
-import datetime
+from datetime import datetime
 
 def query1(db):
     plurals_and_names = (('users', 'User'), ('activities', 'Activity'), ('trackpoints', 'TrackPoint'))
