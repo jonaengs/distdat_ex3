@@ -95,5 +95,11 @@ def main():
             db['TrackPoint'].insert_many(track_points)
             print('FERDIG MED FIL!\n')
 
+def drop():
+    db = DbConnector().db
+    db['Activity'].drop()
+    db['TrackPoint'].drop()
+    print('Collections dropped')
+
 if __name__ == '__main__':
     main()
