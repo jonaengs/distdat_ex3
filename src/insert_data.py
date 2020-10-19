@@ -1,5 +1,6 @@
 import os
 import itertools
+from functools import partial
 from pathlib import Path
 from pprint import pprint
 
@@ -54,19 +55,29 @@ def get_labeled_activities():
 """
     LAGER DICTIONARY AV ALLE TRACKPOINTS
 """
+def activity_from_tps(tp1, tp2):
+    start_dt, end_dt = parse_tp(tp1)["date_time"], parse_tp(tp2)["date_time"]
+    return {"_id": next_activity_id(), "start_date_time": start_dt, "end_date_time": end_dt}
+
 def parse_tp(line):
     split = line.strip().split(",")
     return dict(zip(
-        ("lat", "lon", "altitude", "date_datetime"),
+        ("lat", "lon", "altitude", "date_time"),
         (split[0], split[1], split[3], " ".join(split[5:]))
     ))
 
-def get_all_trackpoints(n=10):
-    return (
-        parse_tp(line) | {"_id": next_tp_id(), "activity_id": None}
-        for fp in itertools.islice(valid_tp_files, n or 1234567890)
-        for line in open(fp).readlines()[6:]
-    )
+def get_tps_and_acts():
+    for uid in range(182):
+        user_tp_path = f"dataset/Data/{uid:03}/Trajectory"
+        for tp_fp in map(partial(os.path.join, user_tp_path), os.listdir(user_tp_path)):
+           lines = open(tp_fp).readlines()[6:] # skip header
+           if len(lines) <= 2500:
+               activity = activity_from_tps(lines[0], lines[-1])
+               file_trackpoints = map(
+                   lambda tp: tp | {"_id": next_tp_id(), "activity_id": activity["_id"]}, 
+                   map(parse_tp, lines)
+                )
+               yield activity, file_trackpoints
 
 """
     UTILITY
@@ -94,7 +105,11 @@ def insert():
     
     db[USER].insert_many(get_users())
     db[ACTIVITY].insert_many(get_labeled_activities())
-    db[TRACKPOINT].insert_many(get_all_trackpoints())
+    for activity, trackpoints in itertools.islice(get_tps_and_acts(), 1000):
+        db[ACTIVITY].insert_one(activity)
+        db[TRACKPOINT].insert_many(trackpoints)
+
+    any(map(print_documents, collection_names))
 
     do_queries()
 
