@@ -1,6 +1,9 @@
 from collections import Counter
 from itertools import groupby
-from datetime import datetime
+from datetime import datetime, timedelta
+
+from DbConnector import DbConnector
+
 
 def query1(db):
     plurals_and_names = (('users', 'User'), ('activities', 'Activity'), ('trackpoints', 'TrackPoint'))
@@ -8,28 +11,42 @@ def query1(db):
         documents = db[c_name].find({}).collection
         print(f"{c_plural} has {documents.count_documents({})} entries")
 
+
 def query5(db):
     activities_with_transport = db["Activity"].find({
         "transportation_mode": {"$exists": True, "$ne": None}
     })
-    transports = map(lambda a: a["transportation_mode"], activities_with_transport)
+    transports = (a["transportation_mode"] for a in activities_with_transport)
     print(Counter(transports))
 
-def query9(db):
-    # antar trackpoint peker til aktivitet som peker til bruker
-    parse_dt = lambda s: datetime.strptime(s, r"%Y-%m-%d %H:%M:%S")
-    all_trackpoints = db["TrackPoints"].find({})
+
+def query9(db):  # antar trackpoint peker til aktivitet som peker til bruker
+    activity_user_map = {
+        doc["_id"]: doc["user_id"] for doc in
+        db.Activity.find({}, {"_id": 1, "user_id": 1})
+    }
+    grouped_trackpoints = db.TrackPoint.aggregate([{"$group": {
+            "_id": "$activity_id", 
+            "datetimes": {"$push": "$date_time"}}
+        }], allowDiskUse=True)
+    
     users = set()
-    for activity_id, activity_tps in groupby(all_trackpoints, key=lambda tp: tp["activity_id"]):
-        for prev_tp, tp in zip(activity_tps[:-1], activity_tps[1:]):
-            if parse_dt(tp) - parse_dt(prev_tp) > datetime.timedelta(minutes=5):
-                activity_cursor = db["Activity"].find({"_id": activity_id})
-                user_id = activity_cursor[0]["user_id"]
-                users.add(user_id)
+    for doc in grouped_trackpoints:
+        aid, tp_dts = doc["_id"], doc["datetimes"]
+        if activity_user_map[aid] in users:  # skip 
+            continue
+        for prev_dt, dt in zip(tp_dts[:-1], tp_dts[1:]):
+            if (dt - prev_dt > timedelta(minutes=5)):
+                users.add(activity_user_map[aid])
                 break
-    print(users)
+
+    print(*sorted(users), sep=", ")
 
 
 
-
+if __name__ == '__main__':
+    db = DbConnector().db
+    query1(db)
+    query5(db)
+    query9(db)
 
