@@ -65,6 +65,7 @@ def get_track_point(track_point_line, id, activity_id):
 def main():
     activity_id_counter = 1
     track_point_id_counter = 1
+    users_added = []
     db = DbConnector().db
     path = Path(__file__).parent.parent.absolute()
 
@@ -96,11 +97,18 @@ def main():
                 if label:
                     activity['transportation_mode'] = label
 
+            # Find all track points and add them to the list that will eventually be inserted to database
             for i in range(6, len(lines)):
                 track_point_line = lines[i].strip()
                 track_point = get_track_point(track_point_line, track_point_id_counter, activity_id_counter)
                 track_points.append(track_point)
                 track_point_id_counter += 1
+
+            # Insert user if not already inserted
+            if user_id not in users_added:
+                user = {'_id': user_id, 'has_labels': is_labeled}
+                db['User'].insert_one(user)
+                users_added.append(user_id)
 
             activity_id_counter += 1
 
