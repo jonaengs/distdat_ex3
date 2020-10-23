@@ -2,6 +2,7 @@ import os
 import glob
 from pathlib import Path
 from DbConnector import DbConnector
+import datetime
 
 def get_label_path(path):
     splitted_path = path.split('/')
@@ -34,6 +35,16 @@ def get_date_and_time(track_point_line):
     dateAndTime = track_point_line.split(',')[-2:]
     return '+'.join(dateAndTime)
 
+def get_date_object(date_string):
+    year = int(date_string[:4])
+    month = int(date_string[5:7])
+    day = int(date_string[8:10])
+    hour = int(date_string[11:13])
+    minute = int(date_string[14:16])
+    second = int(date_string[17:19])
+    date_obj = datetime.datetime(year, month, day, hour, minute, second)
+    return date_obj
+
 def get_track_point(track_point_line, id, activity_id):
     track_point = {}
     splitted_track_point = track_point_line.split(',')
@@ -46,7 +57,7 @@ def get_track_point(track_point_line, id, activity_id):
         'lon': float(splitted_track_point[1]),
         'altitude': int(float(splitted_track_point[3])),
         'date_days': float(splitted_track_point[4]),
-        'date_time': splitted_track_point[5] + '+' + splitted_track_point[6],
+        'date_time': get_date_object(splitted_track_point[5] + '+' + splitted_track_point[6]),
         'activity_id': activity_id 
     }
     return track_point
@@ -54,6 +65,7 @@ def get_track_point(track_point_line, id, activity_id):
 def main():
     activity_id_counter = 1
     track_point_id_counter = 1
+    users_added = []
     db = DbConnector().db
     path = Path(__file__).parent.parent.absolute()
 
@@ -70,11 +82,13 @@ def main():
 
             first_track_point = lines[6].strip()
             start_date_time = get_date_and_time(first_track_point)
-            activity['start_date_time'] = start_date_time
+            start_date_time_object = get_date_object(start_date_time)
+            activity['start_date_time'] = start_date_time_object
 
             last_track_point = lines[-1].strip()
             end_date_time = get_date_and_time(last_track_point)
-            activity['end_date_time'] = end_date_time
+            end_date_time_object = get_date_object(end_date_time)
+            activity['end_date_time'] = end_date_time_object
 
             label_path = get_label_path(file.name)
             is_labeled = os.path.isfile(label_path)
@@ -83,15 +97,21 @@ def main():
                 if label:
                     activity['transportation_mode'] = label
 
+            # Find all track points and add them to the list that will eventually be inserted to database
             for i in range(6, len(lines)):
                 track_point_line = lines[i].strip()
                 track_point = get_track_point(track_point_line, track_point_id_counter, activity_id_counter)
                 track_points.append(track_point)
                 track_point_id_counter += 1
 
+            # Insert user if not already inserted
+            if user_id not in users_added:
+                user = {'_id': user_id, 'has_labels': is_labeled}
+                db['User'].insert_one(user)
+                users_added.append(user_id)
+
             activity_id_counter += 1
 
-                
             db['Activity'].insert_one(activity)
             db['TrackPoint'].insert_many(track_points)
             print('FERDIG MED FIL %s\n' % activity_id_counter)
