@@ -103,9 +103,11 @@ def query10(db):
     for track_point in track_points_in_forbidden_city:
         activity_document = collection.find({'_id': track_point['activity_id']})
         for activity in activity_document:
-            users_in_forbidden_city.add(int(activity['user_id']))
-
-    print_query('10', users_in_forbidden_city)
+            users_in_forbidden_city.add(activity['user_id'])
+    
+    user_list = list(users_in_forbidden_city)
+    user_list.sort()
+    print_query('10', user_list)
 
 def main():
     try:
