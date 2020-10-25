@@ -177,10 +177,10 @@ def query7(db):
     activities = {
         a["_id"]: (a["start_date_time"], a["end_date_time"])
         for a in
-        db["Activity2"].find({"user_id": "112", "transportation_mode": "walk"})
+        db["Activity"].find({"user_id": "112", "transportation_mode": "walk"})
     }
     activity_ids = list(activities.keys())
-    all_trackPoints = db["TrackPoint2"].aggregate([{
+    all_trackPoints = db["TrackPoint"].aggregate([{
         "$group": {
             "_id": "$activity_id",
             "lat": {"$push": "$lat"},
